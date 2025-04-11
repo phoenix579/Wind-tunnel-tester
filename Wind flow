@@ -1,0 +1,52 @@
+from vpython import *
+import math
+
+# Set up the scene (canvas)
+scene = canvas(title="3D Wind Tunnel", width=1000, height=600, center=vector(0, 0, 0), background=color.white)
+
+# Wind Tunnel Box (the walls of the tunnel)
+tunnel = box(pos=vector(0, 0, 0), size=vector(12, 4, 4), opacity=0.1, color=color.gray(0.7))
+
+# Contraction section (where the airflow accelerates)
+contraction = cone(pos=vector(-6, 0, 0), axis=vector(6, 0, 0), radius=1.5, color=color.cyan)
+
+# Diffuser section (where the airflow decelerates)
+diffuser = cone(pos=vector(6, 0, 0), axis=vector(6, 0, 0), radius=2, color=color.orange)
+
+# Airfoil (representing an object inside the test section of the tunnel)
+airfoil = ellipsoid(pos=vector(0, 0, 0), length=2, height=0.6, width=1.5, color=color.red)
+
+# Streamlines (representing the airflow)
+streamlines = []
+for y in [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5]:
+    for z in [-1, 0, 1]:
+        streamline = arrow(pos=vector(-6, y, z), axis=vector(0.5, 0, 0), color=color.cyan, shaftwidth=0.1)
+        streamline.original_y = y
+        streamline.original_z = z
+        streamlines.append(streamline)
+
+# Function to calculate vertical offset for streamlines as they pass the airfoil
+def compute_offset(x_pos, y_original):
+    """
+    Compute the vertical offset for the streamlines near the airfoil.
+    This simulates the separation of airflow when it encounters the airfoil.
+    """
+    if -2 < x_pos < 2:
+        # Separation effect: simulating the air flowing over/under the airfoil
+        return 0.4 * math.exp(-((x_pos - 0) ** 2) / (2 * 1.5**2))
+    return 0  # No effect once the airflow passes the airfoil
+
+# Animation loop to move the streamlines
+while True:
+    rate(60)  # Set the frame rate (60 frames per second)
+    for streamline in streamlines:
+        streamline.pos.x += 0.1  # Move the streamline forward
+
+        # Apply vertical offset (separation effect) as the streamline approaches the airfoil
+        y_offset = compute_offset(streamline.pos.x, streamline.original_y)
+        streamline.pos.y = streamline.original_y + y_offset  # Update y position based on separation
+
+        # Reset streamlines after passing the test section (looping behavior)
+        if streamline.pos.x > 6:
+            streamline.pos.x = -6
+            streamline.pos.y = streamline.original_y  # Reset vertical position when looping
