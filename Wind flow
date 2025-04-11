@@ -1,0 +1,152 @@
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QLineEdit, QWidget, QTabWidget
+from PyQt5.QtGui import QPixmap
+from sklearn.ensemble import RandomForestRegressor
+import numpy as np
+import requests
+
+
+class AerospaceLabApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("AI-Integrated Aerospace Lab")
+        self.setGeometry(100, 100, 1200, 800)
+        self.init_ui()
+        self.aero_model = AerodynamicModel()  # Initialize aerodynamic model
+
+    def init_ui(self):
+        # Main Tab Layout
+        tabs = QTabWidget()
+
+        # Multimedia Section
+        multimedia_tab = QWidget()
+        self.init_multimedia_ui(multimedia_tab)
+        tabs.addTab(multimedia_tab, "NASA & ISRO Multimedia")
+
+        # Simulation Section
+        simulation_tab = QWidget()
+        self.init_simulation_ui(simulation_tab)
+        tabs.addTab(simulation_tab, "Aerodynamic Simulations")
+
+        # Aerospace Part Details Section
+        part_details_tab = QWidget()
+        self.init_part_info_ui(part_details_tab)
+        tabs.addTab(part_details_tab, "Part Information")
+
+        self.setCentralWidget(tabs)
+
+    def init_multimedia_ui(self, tab):
+        layout = QVBoxLayout()
+
+        # NASA Multimedia Section
+        nasa_button = QPushButton("Fetch NASA Image of the Day")
+        nasa_button.clicked.connect(self.fetch_nasa_image)
+        layout.addWidget(nasa_button)
+        self.nasa_label = QLabel("NASA content will be displayed here.")
+        layout.addWidget(self.nasa_label)
+
+        # ISRO Multimedia Section
+        isro_button = QPushButton("Show ISRO Highlights")
+        isro_button.clicked.connect(self.show_isro_content)
+        layout.addWidget(isro_button)
+        self.isro_label = QLabel("ISRO content will be displayed here.")
+        layout.addWidget(self.isro_label)
+
+        tab.setLayout(layout)
+
+    def fetch_nasa_image(self):
+        response = requests.get("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY")  # Replace DEMO_KEY with your API key
+        if response.status_code == 200:
+            data = response.json()
+            self.nasa_label.setText(f"Title: {data['title']}\nExplanation: {data['explanation']}\nURL: {data['url']}")
+        else:
+            self.nasa_label.setText("Failed to fetch NASA data. Check API key or connection.")
+
+    def show_isro_content(self):
+        self.isro_label.setText("ISRO Mission Highlights:\n- Chandrayaan-3\n- Mangalyaan\n- Gaganyaan")
+
+    def init_simulation_ui(self, tab):
+        layout = QVBoxLayout()
+
+        # Input Fields for Simulation
+        self.span_input = QLineEdit()
+        self.span_input.setPlaceholderText("Enter wing span (e.g., 40 meters)")
+        layout.addWidget(self.span_input)
+
+        self.speed_input = QLineEdit()
+        self.speed_input.setPlaceholderText("Enter airspeed (e.g., 12 meters/second)")
+        layout.addWidget(self.speed_input)
+
+        # Run Simulation Button
+        simulate_button = QPushButton("Run Simulation")
+        simulate_button.clicked.connect(self.run_simulation)
+        layout.addWidget(simulate_button)
+
+        # Simulation Output
+        self.simulation_label = QLabel("Simulation results will be displayed here.")
+        layout.addWidget(self.simulation_label)
+
+        tab.setLayout(layout)
+
+    def run_simulation(self):
+        try:
+            span = float(self.span_input.text())
+            speed = float(self.speed_input.text())
+            result = self.aero_model.predict_drag([span, speed])
+            self.simulation_label.setText(f"Predicted Drag Coefficient: {result:.3f}")
+        except ValueError:
+            self.simulation_label.setText("Invalid inputs. Please enter numeric values.")
+
+    def init_part_info_ui(self, tab):
+        layout = QVBoxLayout()
+
+        # Input Field for Part Information
+        self.part_input = QLineEdit()
+        self.part_input.setPlaceholderText("Enter part name (e.g., Wing)")
+        layout.addWidget(self.part_input)
+
+        # Fetch Part Info Button
+        part_button = QPushButton("Get Part Info")
+        part_button.clicked.connect(self.show_part_info)
+        layout.addWidget(part_button)
+
+        # Part Information Display
+        self.part_label = QLabel("Details for the selected part will be displayed here.")
+        layout.addWidget(self.part_label)
+
+        tab.setLayout(layout)
+
+    def show_part_info(self):
+        part_name = self.part_input.text().strip()
+        info = get_part_info(part_name)
+        self.part_label.setText(info)
+
+
+# Aerodynamic Simulation Module
+class AerodynamicModel:
+    def __init__(self):
+        self.model = RandomForestRegressor()
+        self.train()
+
+    def train(self):
+        X = np.array([[40, 15], [50, 20], [60, 25]])  # Wing span and airspeed
+        y = np.array([0.3, 0.25, 0.2])  # Drag coefficients
+        self.model.fit(X, y)
+
+    def predict_drag(self, params):
+        return self.model.predict([params])[0]
+
+
+# Aerospace Part Information Module
+def get_part_info(part_name):
+    parts = {
+        "Wing": "Material: Carbon Fiber, Function: Generate Lift, Dimensions: Span=30m, Chord=3m",
+        "Fuselage": "Material: Aluminum Alloy, Function: Holds crew and payload, Dimensions: Length=50m, Diameter=5m"
+    }
+    return parts.get(part_name, "Part not found.")
+
+
+# Run the App
+app = QApplication([])
+window = AerospaceLabApp()
+window.show()
+app.exec_()
